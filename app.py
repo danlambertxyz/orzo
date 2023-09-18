@@ -39,6 +39,14 @@ def index():
     image_url = request.args.get("image_url")
     return render_template("index.html", result=result, image_url=image_url)
 
+def name_validator(name):
+    # trim name input to only 5 words or 50 characters (whichever is less)
+    # advanced validation can be added later
+    if len(str(name)) > 50:
+        name = str(name)[:50]
+    else:
+        name = ' '.join(str(name).split()[:5])
+    return name
 
 def generate_prompt(name, emotion):
     return f"Write a 3 sentence {emotion} story about a main character called {name.capitalize()}."
