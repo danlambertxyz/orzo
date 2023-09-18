@@ -2,9 +2,12 @@ import os
 
 import openai
 from flask import Flask, redirect, render_template, request, url_for
+from google.cloud import texttospeech
 
 app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Using ADC to authenticate Google clients (authN associated with my personal account, not suitable for prod)
 
 
 @app.route("/", methods=("GET", "POST"))
@@ -33,11 +36,15 @@ def index():
         # Generate image
         image_url = generate_image(response_image_description_text, emotion)
 
-        return redirect(url_for("index", result=story_text, image_url=image_url))
+        # Generate audio file
+        audio_url = generate_speech(story_text)
+
+        return redirect(url_for("index", result=story_text, image_url=image_url, audio_url=audio_url))
 
     result = request.args.get("result")
     image_url = request.args.get("image_url")
-    return render_template("index.html", result=result, image_url=image_url)
+    audio_url = request.args.get("audio_url")
+    return render_template("index.html", result=result, image_url=image_url, audio_url=audio_url)
 
 def name_validator(name):
     # trim name input to only 5 words or 50 characters (whichever is less)
@@ -63,3 +70,37 @@ def generate_image(scene_description, emotion):
         size="256x256"
     )
     return response['data'][0]['url']
+
+def generate_speech(story, project_id="data-playground-357315"):
+
+    # Instantiates a client
+    client = texttospeech.TextToSpeechClient(project=project_id)
+
+    # Set the text input to be synthesized
+    synthesis_input = texttospeech.SynthesisInput(text=story)
+
+    # Build the voice request, select the language code ("en-US") and the ssml voice gender ("neutral")
+    voice = texttospeech.VoiceSelectionParams(
+        language_code="en-GB",
+        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+    )
+
+    # Select the type of audio file you want returned
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3
+    )
+
+    # Perform the text-to-speech request on the text input
+    response = client.synthesize_speech(
+        input=synthesis_input,
+        voice=voice,
+        audio_config=audio_config
+    )
+
+    # The response's audio_content is binary.
+    with open("output.mp3", "wb") as out:
+        # Write the response to the output file.
+        out.write(response.audio_content)
+        print('Audio content written to file "static/output.mp3"')
+
+    return "static/output.mp3"
