@@ -1,14 +1,27 @@
-import os
+'''
 
+Project Orzo
+
+Flask Python app to create stories and corresponding media.
+
+For authentication, I'm using personal account ADC.
+So run command 'gcloud auth application-default login' on machine to generate credentials file.
+
+Other useful notes:
+ - if running from local, don't forget to run ". venv/bin/activate" at file level above story_generator
+ - don't forget to enable text-to-speech API
+ - run application by running 'flask run'
+
+
+'''
+
+import os
 import openai
 from flask import Flask, redirect, render_template, request, url_for
 from google.cloud import texttospeech
 
 app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# Using ADC to authenticate Google clients (authN associated with my personal account, not suitable for prod)
-
 
 @app.route("/", methods=("GET", "POST"))
 def index():
@@ -31,20 +44,20 @@ def index():
             temperature=0.6,
             max_tokens=500,)
         response_image_description_text = response_image_description.choices[0].text
-        print(response_image_description_text)
 
         # Generate image
-        image_url = generate_image(response_image_description_text, emotion)
+        #image_url = generate_image(response_image_description_text, emotion)
+        image_url = 'https://media.sproutsocial.com/uploads/2017/02/10x-featured-social-media-image-size.png'
 
         # Generate audio file
-        audio_url = generate_speech(story_text)
+        story_audio = generate_speech(story_text)
 
-        return redirect(url_for("index", result=story_text, image_url=image_url, audio_url=audio_url))
+        return redirect(url_for("index", result=story_text, image_url=image_url, audio_url=story_audio))
 
     result = request.args.get("result")
     image_url = request.args.get("image_url")
-    audio_url = request.args.get("audio_url")
-    return render_template("index.html", result=result, image_url=image_url, audio_url=audio_url)
+    story_audio = request.args.get("story_audio")
+    return render_template("index.html", result=result, image_url=image_url, audio_url=story_audio)
 
 def name_validator(name):
     # trim name input to only 5 words or 50 characters (whichever is less)
@@ -73,8 +86,11 @@ def generate_image(scene_description, emotion):
 
 def generate_speech(story, project_id="data-playground-357315"):
 
+    # Set the environment variable to specify the project ID
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
     # Instantiates a client
-    client = texttospeech.TextToSpeechClient(project=project_id)
+    client = texttospeech.TextToSpeechClient()
 
     # Set the text input to be synthesized
     synthesis_input = texttospeech.SynthesisInput(text=story)
@@ -82,7 +98,7 @@ def generate_speech(story, project_id="data-playground-357315"):
     # Build the voice request, select the language code ("en-US") and the ssml voice gender ("neutral")
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-GB",
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
     )
 
     # Select the type of audio file you want returned
@@ -98,9 +114,9 @@ def generate_speech(story, project_id="data-playground-357315"):
     )
 
     # The response's audio_content is binary.
-    with open("output.mp3", "wb") as out:
+    with open("static/story_audio.mp3", "wb") as out:
         # Write the response to the output file.
         out.write(response.audio_content)
-        print('Audio content written to file "static/output.mp3"')
+        print('Audio content written to file "static/story_audio.mp3"')
 
-    return "static/output.mp3"
+    return "static/story_audio.mp3"
