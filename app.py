@@ -46,8 +46,7 @@ def index():
         response_image_description_text = response_image_description.choices[0].text
 
         # Generate image
-        #image_url = generate_image(response_image_description_text, emotion)
-        image_url = 'https://media.sproutsocial.com/uploads/2017/02/10x-featured-social-media-image-size.png'
+        image_url = generate_image(response_image_description_text, emotion)
 
         # Generate audio file
         story_audio = generate_speech(story_text)
@@ -114,9 +113,9 @@ def generate_speech(story, project_id="data-playground-357315"):
     )
 
     # The response's audio_content is binary.
-    with open("static/story_audio.mp3", "wb") as out:
+    audio_path = "static/story_audio.mp3"
+    with open(audio_path, "wb") as out:
         # Write the response to the output file.
         out.write(response.audio_content)
-        print('Audio content written to file "static/story_audio.mp3"')
 
-    return "static/story_audio.mp3"
+    return audio_path
