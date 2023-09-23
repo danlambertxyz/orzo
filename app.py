@@ -12,7 +12,6 @@ Other useful notes:
  - don't forget to enable text-to-speech API
  - run application by running 'flask run'
 
-
 '''
 
 import os
