@@ -30,20 +30,29 @@ def index():
         # Generate story
         name = request.form["name"]
         emotion = request.form["emotion"]
-        response_story = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=generate_prompt(name, emotion),
+        prompt = generate_prompt(name, emotion)
+        response_story = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a story generator."},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.6,
             max_tokens=500,)
-        story_text = response_story.choices[0].text
+        story_text = response_story.choices[0].message.content
 
-        # Generate image description
-        response_image_description = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=generate_image_description(story_text),
-            temperature=0.6,
+        # Generate image description using previous conversation
+        response_image_description = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You generate an image descriptions from a story scene."},
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": story_text},
+                {"role": "user", "content": generate_image_description()}
+            ],
+            temperature=1.0,
             max_tokens=500,)
-        response_image_description_text = response_image_description.choices[0].text
+        response_image_description_text = response_image_description.choices[0].message.content
 
         # Generate image
         image_url = generate_image(response_image_description_text, emotion)
@@ -70,10 +79,10 @@ def name_validator(name):
 def generate_prompt(name, emotion):
     return f"Write a 3 sentence {emotion} story about a main character called {name.capitalize()}."
 
-def generate_image_description(story):
-    return f"Here is a short story- {story}. \nBriefly describe a moment in time from this story. The moment chosen " \
-           f"should make for a good visual image. The description should be only one line and descriptive enough " \
-           f"to create an image."
+def generate_image_description():
+    return "Now briefly describe a moment in time from this story. The moment chosen " \
+           "should make for a good visual image. The description should be only one line and descriptive enough " \
+           "to create an image."
 
 def generate_image(scene_description, emotion):
     response = openai.Image.create(
